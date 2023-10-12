@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Vote extends Model
 {
     use HasFactory;
+    protected $table='vote';
     protected $fillable = ['type', 'feedback_id', 'user_id'];
 
     public function user()

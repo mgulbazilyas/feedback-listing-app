@@ -1,325 +1,318 @@
-<script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+<script setup>
+import Modal from "@/Components/Modal.vue";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { Head, Link } from "@inertiajs/vue3";
+import { ref, onMounted, onBeforeUnmount, reactive } from "vue";
+import axios from "axios";
 
-defineProps<{
-    canLogin?: boolean;
-    canRegister?: boolean;
-    laravelVersion: string;
-    phpVersion: string;
-}>();
+const apiMeta = ref({});
+const loading = ref(false);
+const pageData = reactive({
+  feedback: null,
+  modal: {
+    show: false,
+    feedback: null,
+    feedbackIndex: null,
+  },
+  items: [],
+  pageNo: 1,
+  loading: false,
+  searchTerm: "",
+});
+const search = () => {
+  pageData.pageNo = 1;
+  pageData.items = [];
+  getPageData();
+};
+const getPageData = () => {
+  return new Promise((resolve, reject) => {
+    loading.value = true;
+    fetch(`/api/feedback?page=${pageData.pageNo}&search=${pageData.searchTerm}`).then((response) =>
+      response.json().then((response) => {
+        console.log(response);
+        const data = response.data;
+        pageData.items = pageData.items.concat(data.data);
+        delete data.items;
+        apiMeta.value = data;
+        loading.value = false;
+        resolve(true);
+      })
+    );
+  });
+};
+const infiniteScrollTrigger = ref();
+// Add scroll event listener
+const handleScroll = async () => {
+  const trigger = infiniteScrollTrigger.value;
+  if (trigger) {
+    // debugger;
+    const rect = trigger.getBoundingClientRect();
+
+    const isInView = rect.top >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight);
+
+    if (isInView) {
+      await loadMoreItems();
+    } else {
+      console.log("not in view");
+    }
+  } else {
+    console.log("trigger not visible");
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("scroll", handleScroll);
+  getPageData().then(() => {
+    handleScroll();
+  });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", handleScroll);
+});
+
+const loadMoreItems = () => {
+  // Call your API or method to load more items
+  // Update items.value with the new data
+  if (apiMeta.value.next_page_url) {
+    pageData.pageNo += 1;
+    return getPageData();
+  } else {
+  }
+};
+const statusToText = {
+  0: "Pending",
+  1: "In Progress",
+  2: "Completed",
+};
+const getStatusColorClass = (status) => {
+  switch (status) {
+    case 0:
+      return "text-red-500"; // Tailwind CSS class for red text
+    case 1:
+      return "text-blue-500"; // Tailwind CSS class for blue text
+    case 2:
+      return "text-green-500"; // Tailwind CSS class for green text
+    default:
+      return "text-black"; // Default color if status is not recognized
+  }
+};
+const createNewFeedback = (item) => {
+  pageData.modal.feedback = {};
+  pageData.modal.show = true;
+};
+const editFeedback = (item) => {
+  pageData.modal.feedback = { ...item };
+  pageData.modal.show = true;
+};
+const deleteFeedback = (item) => {
+  const isConfirm = confirm("Are you sure you want to delete");
+  if (isConfirm) {
+    let config = {
+      method: "delete",
+      maxBodyLength: Infinity,
+      url: `/api/feedback/${item.id}`,
+    };
+    pageData.loading = true;
+    axios
+      .request(config)
+      .then((response) => {
+        console.log(JSON.stringify(response.data));
+        const index = pageData.items.findIndex((itm) => itm.id === item.id);
+        pageData.items.splice(index, 1);
+        alert("Feedback Deleted");
+      })
+      .catch((error) => {
+        console.log(error);
+      })
+      .finally(() => {
+        pageData.loading = false;
+      });
+  } else {
+  }
+};
+const handleSubmit = () => {
+  let feedback = pageData.modal.feedback;
+
+  if (feedback.id) {
+    // Means this is update request
+    const id = feedback.id;
+    delete feedback.id;
+    const raw = JSON.stringify({ ...feedback });
+    feedback.id = id;
+    const config = {
+      method: "put",
+      url: `/api/feedback/${id}`,
+      data: raw,
+    };
+    pageData.loading = true;
+    axios(config)
+      .then(function (response) {
+        const index = pageData.items.findIndex((item) => item.id === id);
+        pageData.items[index] = { ...feedback };
+      })
+      .catch(function (error) {
+        console.log(error);
+      })
+      .finally(() => {
+        pageData.loading = false;
+        alert("feedback editted successfully");
+        pageData.modal.show = false;
+      });
+  } else {
+    // Create New Item
+    const raw = JSON.stringify({ ...feedback });
+    const config = {
+      method: "post",
+      url: `/api/feedback`,
+      data: raw,
+    };
+    pageData.loading = true;
+    axios(config)
+      .then(function (response) {
+        pageData.items = [];
+        pageData.pageNo = 1;
+        getPageData();
+      })
+      .catch(function (error) {
+        console.log(error);
+      })
+      .finally(() => {
+        pageData.loading = false;
+        alert("Feedback Created successfully");
+        pageData.modal.show = false;
+      });
+  }
+};
+import { usePage } from "@inertiajs/vue3";
+const page = usePage();
+console.log(page.props);
 </script>
 
-<template>
-    <Head title="Welcome" />
-
-    <div
-        class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white"
-    >
-        <div v-if="canLogin" class="sm:fixed sm:top-0 sm:right-0 p-6 text-right">
-            <Link
-                v-if="$page.props.auth.user"
-                :href="route('dashboard')"
-                class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                >Dashboard</Link
-            >
-
-            <template v-else>
-                <Link
-                    :href="route('login')"
-                    class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                    >Log in</Link
-                >
-
-                <Link
-                    v-if="canRegister"
-                    :href="route('register')"
-                    class="ml-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                    >Register</Link
-                >
-            </template>
-        </div>
-
-        <div class="max-w-7xl mx-auto p-6 lg:p-8">
-            <div class="flex justify-center">
-                <svg
-                    viewBox="0 0 62 65"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-16 w-auto bg-gray-100 dark:bg-gray-900"
-                >
-                    <path
-                        d="M61.8548 14.6253C61.8778 14.7102 61.8895 14.7978 61.8897 14.8858V28.5615C61.8898 28.737 61.8434 28.9095 61.7554 29.0614C61.6675 29.2132 61.5409 29.3392 61.3887 29.4265L49.9104 36.0351V49.1337C49.9104 49.4902 49.7209 49.8192 49.4118 49.9987L25.4519 63.7916C25.3971 63.8227 25.3372 63.8427 25.2774 63.8639C25.255 63.8714 25.2338 63.8851 25.2101 63.8913C25.0426 63.9354 24.8666 63.9354 24.6991 63.8913C24.6716 63.8838 24.6467 63.8689 24.6205 63.8589C24.5657 63.8389 24.5084 63.8215 24.456 63.7916L0.501061 49.9987C0.348882 49.9113 0.222437 49.7853 0.134469 49.6334C0.0465019 49.4816 0.000120578 49.3092 0 49.1337L0 8.10652C0 8.01678 0.0124642 7.92953 0.0348998 7.84477C0.0423783 7.8161 0.0598282 7.78993 0.0697995 7.76126C0.0884958 7.70891 0.105946 7.65531 0.133367 7.6067C0.152063 7.5743 0.179485 7.54812 0.20192 7.51821C0.230588 7.47832 0.256763 7.43719 0.290416 7.40229C0.319084 7.37362 0.356476 7.35243 0.388883 7.32751C0.425029 7.29759 0.457436 7.26518 0.498568 7.2415L12.4779 0.345059C12.6296 0.257786 12.8015 0.211853 12.9765 0.211853C13.1515 0.211853 13.3234 0.257786 13.475 0.345059L25.4531 7.2415H25.4556C25.4955 7.26643 25.5292 7.29759 25.5653 7.32626C25.5977 7.35119 25.6339 7.37362 25.6625 7.40104C25.6974 7.43719 25.7224 7.47832 25.7523 7.51821C25.7735 7.54812 25.8021 7.5743 25.8196 7.6067C25.8483 7.65656 25.8645 7.70891 25.8844 7.76126C25.8944 7.78993 25.9118 7.8161 25.9193 7.84602C25.9423 7.93096 25.954 8.01853 25.9542 8.10652V33.7317L35.9355 27.9844V14.8846C35.9355 14.7973 35.948 14.7088 35.9704 14.6253C35.9792 14.5954 35.9954 14.5692 36.0053 14.5405C36.0253 14.4882 36.0427 14.4346 36.0702 14.386C36.0888 14.3536 36.1163 14.3274 36.1375 14.2975C36.1674 14.2576 36.1923 14.2165 36.2272 14.1816C36.2559 14.1529 36.292 14.1317 36.3244 14.1068C36.3618 14.0769 36.3942 14.0445 36.4341 14.0208L48.4147 7.12434C48.5663 7.03694 48.7383 6.99094 48.9133 6.99094C49.0883 6.99094 49.2602 7.03694 49.4118 7.12434L61.3899 14.0208C61.4323 14.0457 61.4647 14.0769 61.5021 14.1055C61.5333 14.1305 61.5694 14.1529 61.5981 14.1803C61.633 14.2165 61.6579 14.2576 61.6878 14.2975C61.7103 14.3274 61.7377 14.3536 61.7551 14.386C61.7838 14.4346 61.8 14.4882 61.8199 14.5405C61.8312 14.5692 61.8474 14.5954 61.8548 14.6253ZM59.893 27.9844V16.6121L55.7013 19.0252L49.9104 22.3593V33.7317L59.8942 27.9844H59.893ZM47.9149 48.5566V37.1768L42.2187 40.4299L25.953 49.7133V61.2003L47.9149 48.5566ZM1.99677 9.83281V48.5566L23.9562 61.199V49.7145L12.4841 43.2219L12.4804 43.2194L12.4754 43.2169C12.4368 43.1945 12.4044 43.1621 12.3682 43.1347C12.3371 43.1097 12.3009 43.0898 12.2735 43.0624L12.271 43.0586C12.2386 43.0275 12.2162 42.9888 12.1887 42.9539C12.1638 42.9203 12.1339 42.8916 12.114 42.8567L12.1127 42.853C12.0903 42.8156 12.0766 42.7707 12.0604 42.7283C12.0442 42.6909 12.023 42.656 12.013 42.6161C12.0005 42.5688 11.998 42.5177 11.9931 42.4691C11.9881 42.4317 11.9781 42.3943 11.9781 42.3569V15.5801L6.18848 12.2446L1.99677 9.83281ZM12.9777 2.36177L2.99764 8.10652L12.9752 13.8513L22.9541 8.10527L12.9752 2.36177H12.9777ZM18.1678 38.2138L23.9574 34.8809V9.83281L19.7657 12.2459L13.9749 15.5801V40.6281L18.1678 38.2138ZM48.9133 9.14105L38.9344 14.8858L48.9133 20.6305L58.8909 14.8846L48.9133 9.14105ZM47.9149 22.3593L42.124 19.0252L37.9323 16.6121V27.9844L43.7219 31.3174L47.9149 33.7317V22.3593ZM24.9533 47.987L39.59 39.631L46.9065 35.4555L36.9352 29.7145L25.4544 36.3242L14.9907 42.3482L24.9533 47.987Z"
-                        fill="#FF2D20"
-                    />
-                </svg>
-            </div>
-
-            <div class="mt-16">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-                    <a
-                        href="https://laravel.com/docs"
-                        class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500"
-                    >
-                        <div>
-                            <div
-                                class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke-width="1.5"
-                                    class="w-7 h-7 stroke-red-500"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
-                                    />
-                                </svg>
-                            </div>
-
-                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Documentation</h2>
-
-                            <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Laravel has wonderful documentation covering every aspect of the framework. Whether you
-                                are a newcomer or have prior experience with Laravel, we recommend reading our
-                                documentation from beginning to end.
-                            </p>
-                        </div>
-
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.5"
-                            class="self-center shrink-0 stroke-red-500 w-6 h-6 mx-6"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                            />
-                        </svg>
-                    </a>
-
-                    <a
-                        href="https://laracasts.com"
-                        class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500"
-                    >
-                        <div>
-                            <div
-                                class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke-width="1.5"
-                                    class="w-7 h-7 stroke-red-500"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
-                                    />
-                                </svg>
-                            </div>
-
-                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Laracasts</h2>
-
-                            <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Laracasts offers thousands of video tutorials on Laravel, PHP, and JavaScript
-                                development. Check them out, see for yourself, and massively level up your development
-                                skills in the process.
-                            </p>
-                        </div>
-
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.5"
-                            class="self-center shrink-0 stroke-red-500 w-6 h-6 mx-6"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                            />
-                        </svg>
-                    </a>
-
-                    <a
-                        href="https://laravel-news.com"
-                        class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500"
-                    >
-                        <div>
-                            <div
-                                class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke-width="1.5"
-                                    class="w-7 h-7 stroke-red-500"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"
-                                    />
-                                </svg>
-                            </div>
-
-                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Laravel News</h2>
-
-                            <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Laravel News is a community driven portal and newsletter aggregating all of the latest
-                                and most important news in the Laravel ecosystem, including new package releases and
-                                tutorials.
-                            </p>
-                        </div>
-
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.5"
-                            class="self-center shrink-0 stroke-red-500 w-6 h-6 mx-6"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75"
-                            />
-                        </svg>
-                    </a>
-
-                    <div
-                        class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500"
-                    >
-                        <div>
-                            <div
-                                class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke-width="1.5"
-                                    class="w-7 h-7 stroke-red-500"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="M6.115 5.19l.319 1.913A6 6 0 008.11 10.36L9.75 12l-.387.775c-.217.433-.132.956.21 1.298l1.348 1.348c.21.21.329.497.329.795v1.089c0 .426.24.815.622 1.006l.153.076c.433.217.956.132 1.298-.21l.723-.723a8.7 8.7 0 002.288-4.042 1.087 1.087 0 00-.358-1.099l-1.33-1.108c-.251-.21-.582-.299-.905-.245l-1.17.195a1.125 1.125 0 01-.98-.314l-.295-.295a1.125 1.125 0 010-1.591l.13-.132a1.125 1.125 0 011.3-.21l.603.302a.809.809 0 001.086-1.086L14.25 7.5l1.256-.837a4.5 4.5 0 001.528-1.732l.146-.292M6.115 5.19A9 9 0 1017.18 4.64M6.115 5.19A8.965 8.965 0 0112 3c1.929 0 3.716.607 5.18 1.64"
-                                    />
-                                </svg>
-                            </div>
-
-                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Vibrant Ecosystem</h2>
-
-                            <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Laravel's robust library of first-party tools and libraries, such as
-                                <a
-                                    href="https://forge.laravel.com"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Forge</a
-                                >,
-                                <a
-                                    href="https://vapor.laravel.com"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Vapor</a
-                                >,
-                                <a
-                                    href="https://nova.laravel.com"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Nova</a
-                                >, and
-                                <a
-                                    href="https://envoyer.io"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Envoyer</a
-                                >
-                                help you take your projects to the next level. Pair them with powerful open source
-                                libraries like
-                                <a
-                                    href="https://laravel.com/docs/billing"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Cashier</a
-                                >,
-                                <a
-                                    href="https://laravel.com/docs/dusk"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Dusk</a
-                                >,
-                                <a
-                                    href="https://laravel.com/docs/broadcasting"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Echo</a
-                                >,
-                                <a
-                                    href="https://laravel.com/docs/horizon"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Horizon</a
-                                >,
-                                <a
-                                    href="https://laravel.com/docs/sanctum"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Sanctum</a
-                                >,
-                                <a
-                                    href="https://laravel.com/docs/telescope"
-                                    class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                                    >Telescope</a
-                                >, and more.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex justify-center mt-16 px-6 sm:items-center sm:justify-between">
-                <div class="text-center text-sm text-gray-500 dark:text-gray-400 sm:text-left">
-                    <div class="flex items-center gap-4">
-                        <a
-                            href="https://github.com/sponsors/taylorotwell"
-                            class="group inline-flex items-center hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                class="-mt-px mr-1 w-5 h-5 stroke-gray-400 dark:stroke-gray-600 group-hover:stroke-gray-600 dark:group-hover:stroke-gray-400"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                                />
-                            </svg>
-                            Sponsor
-                        </a>
-                    </div>
-                </div>
-
-                <div class="ml-4 text-center text-sm text-gray-500 dark:text-gray-400 sm:text-right sm:ml-0">
-                    Laravel v{{ laravelVersion }} (PHP v{{ phpVersion }})
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
-
-<style>
-.bg-dots-darker {
-    background-image: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E");
+<style scoped>
+input {
+  border: 1px solid #ccc;
+  border-radius: 0;
 }
-@media (prefers-color-scheme: dark) {
-    .dark\:bg-dots-lighter {
-        background-image: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E");
-    }
+
+button {
+  border-radius: 0;
+}
+
+.infinite-scroll-trigger {
+  height: 50px;
+  /* Adjust this height as needed */
+  background-color: #f5f5f5;
+  /* Adjust the color as needed */
+}
+
+/* Add this CSS in your styles file or in your HTML file if you're not using an external stylesheet */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loader {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #000;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: spin 1s linear infinite;
 }
 </style>
+
+<template>
+  <Head title="Welcome" />
+
+  <div class="row p-12">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center">
+        <input v-model="pageData.searchTerm" type="text" class="border rounded-l py-2 px-3 focus:outline-none focus:ring focus:border-blue-300" placeholder="Search..." />
+        <button @click="search" class="bg-blue-500 text-white py-2 px-4 rounded-r">Search</button>
+      </div>
+      <button @click="createNewFeedback" class="bg-green-500 text-white py-2 px-4 rounded">New Feedback</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Feedback Card 1 -->
+
+      <div class="bg-white shadow p-4 rounded mb-4 hover:shadow-xl" v-for="feedback in pageData.items">
+        <div class="flex justify-between">
+          <div class="">
+            <div class="mb-2">
+              <h2 class="text-xl font-bold text-gray-800">{{ feedback.title }}</h2>
+              <p class="text-sm text-gray-600">{{ feedback.description }}</p>
+            </div>
+            <div class="flex items-center justify-self-stretch">
+              <p class="text-sm font-semibold">{{ feedback.category }}</p>
+              <p class="text-xs text-gray-400">{{ feedback.updated_at }}</p>
+            </div>
+            <div class="flex items-center justify-start">
+              <button class="bg-blue-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="editFeedback(feedback)">Edit</button>
+              <button class="bg-red-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="deleteFeedback(feedback)">Delete</button>
+              <Link class="bg-green-500 text-white px-4 py-2 rounded-b mr-2" :href="`/feedback/${feedback.id}`"> Open {{ feedback.id }}</Link>
+            </div>
+          </div>
+          <div class="w-1/6">
+            <div class="flex flex-col items-end gap-3 pr-3 py-3">
+              <button>
+                <svg class="w-6 h-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+              <span class="p-1">18</span>
+              <button>
+                <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Loading Row -->
+  <div class="flex justify-center items-center mt-8 mb-8">
+    <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
+    <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
+    <div class="loader" v-else></div>
+  </div>
+  <Modal :show="pageData.modal.show">
+    <div class="row">
+      <div class="flex justify-between items-center mb-4 mt-2 mr-2">
+        <h1 class="pl-2" v-if="pageData.modal.feedback.id">Update Feedback</h1>
+        <h1 class="pl-2" v-else>Create Feedback</h1>
+        <span @click="pageData.modal.show = false" class="cursor-pointer"> X </span>
+      </div>
+    </div>
+    <div class="row p-4">
+      <form @submit.prevent="handleSubmit">
+        <div class="mb-4">
+          <label for="title" class="block text-gray-700 font-bold mb-2">Title:</label>
+          <input v-model="pageData.modal.feedback.title" type="text" id="title" name="title" class="border rounded w-full py-2 px-3" required />
+        </div>
+        <div class="mb-4">
+          <label for="description" class="block text-gray-700 font-bold mb-2">Description:</label>
+          <textarea v-model="pageData.modal.feedback.description" id="description" name="description" class="border rounded w-full py-2 px-3" required></textarea>
+        </div>
+        <div class="mb-4">
+          <label for="status" class="block text-gray-700 font-bold mb-2">Status:</label>
+          <input type="text" v-model="pageData.modal.feedback.category" id="status" name="status" class="border rounded w-full py-2 px-3" required />
+        </div>
+
+        <div class="flex justify-center items-center mt-8 mb-8" v-if="pageData.loading">
+          <div class="loader"></div>
+        </div>
+        <div class="flex justify-end" v-else>
+          <button @click="handleSubmit" class="bg-blue-500 text-white px-4 py-2 rounded-full">Save</button>
+        </div>
+      </form>
+    </div>
+  </Modal>
+</template>

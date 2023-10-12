@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class Comment extends Model
 {
     use HasFactory;
-    protected $fillable = ['comment', 'feedback_id', 'user_id'];
+
+    protected $table='comment';
+        protected $fillable = ['comment', 'feedback_id', 'user_id'];
 
     public function user()
     {
