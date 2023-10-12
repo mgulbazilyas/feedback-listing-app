@@ -131,6 +131,20 @@ function addComment() {
       pageData.loading = false;
     });
 }
+function vote(type='upvote', feedback){
+  fetch(`/api/feedback/${feedback.id}/${type}`,{
+    headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+  }).then(response=>response.json().then(res => {
+    if(response.status == 200){
+      feedback.upvotes = res.feedback.upvotes;
+    feedback.downvotes = res.feedback.downvotes;
+
+    }else{
+      alert(res.message);
+
+    }
+  })).catch(err => console.log(err));
+}
 </script>
 
 <style scoped>
@@ -173,76 +187,104 @@ button {
 
 <template>
   <Head title="Welcome" />
-  <div class="row p-12">
-    <div class="bg-white shadow p-4 rounded mb-4">
-      <div class="flex justify-between">
-        <div>
-          <h2 class="text-xl font-bold text-gray-800">{{ feedback.title }}</h2>
-          <p class="text-sm text-gray-600">{{ feedback.description }}</p>
-          <p class="text-sm font-semibold mt-2">{{ feedback.category }}</p>
-          <div class="flex mt-4">
-            <div class="mr-4">
-              <p class="text-lg font-bold text-green-500">{{ feedback.upvotes }}1</p>
-              <p class="text-xs text-gray-400">Upvotes</p>
-            </div>
-            <div>
-              <p class="text-lg font-bold text-red-500">{{ feedback.downvotes }}1</p>
-              <p class="text-xs text-gray-400">Downvotes</p>
+  <div
+    class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white"
+  >
+    
+    <div class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right  bg-gray-500">
+      <Link
+        v-if="$page.props.auth.user"
+        :href="route('homepage')"
+        class="font-semibold text-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
+        >Home</Link
+      >
+
+      <template v-else>
+        <Link
+          :href="route('login')"
+          class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
+          >Log in</Link
+        >
+
+        <Link
+          v-if="canRegister"
+          :href="route('register')"
+          class="ml-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
+          >Register</Link
+        >
+      </template>
+    </div>
+
+    <div class="row p-12 w-full mt-10">
+      <div class="bg-white shadow p-4 rounded mb-4">
+        <div class="flex justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-gray-800">{{ feedback.title }}</h2>
+            <p class="text-sm text-gray-600">{{ feedback.description }}</p>
+            <p class="text-sm font-semibold mt-2">{{ feedback.category }}</p>
+            <div class="flex mt-4">
+              <div class="mr-4">
+                <p class="text-lg font-bold text-green-500">{{ feedback.upvotes }}</p>
+                <p class="text-xs text-gray-400">Upvotes</p>
+              </div>
+              <div>
+                <p class="text-lg font-bold text-red-500">{{ feedback.downvotes }}</p>
+                <p class="text-xs text-gray-400">Downvotes</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="w-1/6">
-          <div class="flex flex-col items-end gap-3 pr-3 py-3">
-              <button>
-                <svg class="w-6 h-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+          <div class="w-1/6">
+            <div class="flex flex-col items-end gap-3 pr-3 py-3">
+              <button @click="vote('upvote', $page.props.feedback)">
+                <svg class="w-12 h-12 mb-1 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
                 </svg>
               </button>
-              <span class="p-1">18</span>
-              <button>
-                <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+              <button @click="vote('downvote', $page.props.feedback)">
+                <svg class="w-12 h-12 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                 </svg>
               </button>
             </div>
+          </div>
         </div>
+      </div>
+
+      <div class="bg-white shadow p-4 rounded mb-4">
+        <h2 class="text-xl font-bold text-gray-800 mb-2">Add Comment</h2>
+
+        <div class="flex gap-3 items-end">
+          <textarea
+            @keydown.enter="addComment"
+            :disabled="pageData.loading"
+            v-model="pageData.feedback.comment"
+            name="comment"
+            class="w-full p-2 border rounded"
+            placeholder="Add a comment"
+          ></textarea>
+          <div>
+            <div class="loader" v-if="pageData.loading"></div>
+            <button v-else @click="addComment" class="mb-2 mt-2 bg-blue-500 text-white px-4 py-2 border rounded-xl">Submit</button>
+          </div>
+        </div>
+        <!-- <pre>{{pageData.items}}</pre> -->
+        <h2 class="text-xl font-bold text-gray-800 mt-5">Comments</h2>
+
+        <div v-for="comment in pageData.items" :key="comment.id" class="flex content mb-3 mt-3 shadow-lg" style="min-height: 5em">
+          <font-awesome icon="fa fa-person" class="w-16 h-16 object-cover rounded-full mr-4" />
+          <!-- <img :src="comment.userProfilePicture" alt="Profile Picture" class="w-10 h-10 object-cover rounded-full mr-4" /> -->
+          <div>
+            <p class="text-gray-800 font-semibold">{{ comment.username }}</p>
+            <p class="text-sm text-gray-600">{{ comment.comment }}</p>
+          </div>
+        </div>
+      </div>
+      <!-- Loading Row -->
+      <div class="flex justify-center items-center mt-8 mb-8">
+        <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
+        <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
+        <div class="loader" v-else></div>
       </div>
     </div>
-
-    <div class="bg-white shadow p-4 rounded mb-4">
-      <h2 class="text-xl font-bold text-gray-800 mb-2">Add Comment</h2>
-
-      <div class="flex gap-3 items-end">
-        <textarea
-          @keydown.enter="addComment"
-          :disabled="pageData.loading"
-          v-model="pageData.feedback.comment"
-          name="comment"
-          class="w-full p-2 border rounded"
-          placeholder="Add a comment"
-        ></textarea>
-        <div>
-          <div class="loader" v-if="pageData.loading"></div>
-          <button v-else @click="addComment" class="mb-2 mt-2 bg-blue-500 text-white px-4 py-2 border rounded-xl">Submit</button>
-        </div>
-      </div>
-      <!-- <pre>{{pageData.items}}</pre> -->
-      <h2 class="text-xl font-bold text-gray-800 mt-5">Comments</h2>
-
-      <div v-for="comment in pageData.items" :key="comment.id" class="flex content mb-3 mt-3 shadow-lg" style="min-height: 5em">
-        <font-awesome icon="fa fa-person" class="w-16 h-16 object-cover rounded-full mr-4" />
-        <!-- <img :src="comment.userProfilePicture" alt="Profile Picture" class="w-10 h-10 object-cover rounded-full mr-4" /> -->
-        <div>
-          <p class="text-gray-800 font-semibold">{{ comment.username }}</p>
-          <p class="text-sm text-gray-600">{{ comment.comment }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Loading Row -->
-  <div class="flex justify-center items-center mt-8 mb-8">
-    <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
-    <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
-    <div class="loader" v-else></div>
   </div>
 </template>

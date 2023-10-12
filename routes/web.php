@@ -24,7 +24,7 @@ Route::get('/', function () {
         // 'laravelVersion' => Application::VERSION,
         // 'phpVersion' => PHP_VERSION,
     ]);
-});
+})->name('homepage');
 Route::get('/feedback/{id}', function ($id){
     $feedback = Feedback::find($id);
         

@@ -21,6 +21,7 @@ Route::resource('votes', VoteController::class);
 Route::resource('comments', CommentController::class);
 
 Route::get('feedback/{id}/comments', [FeedbackController::class, 'viewComments']);
+Route::get('feedback/{id}/{type}', [VoteController::class, 'vote']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

@@ -187,6 +187,21 @@ const handleSubmit = () => {
 import { usePage } from "@inertiajs/vue3";
 const page = usePage();
 console.log(page.props);
+
+function vote(type='upvote', feedback){
+  fetch(`/api/feedback/${feedback.id}/${type}`,{
+    headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+  }).then(response=>response.json().then(res => {
+    if(response.status == 200){
+      feedback.upvotes = res.feedback.upvotes;
+    feedback.downvotes = res.feedback.downvotes;
+
+    }else{
+      alert(res.message);
+
+    }
+  })).catch(err => console.log(err));
+}
 </script>
 
 <style scoped>
@@ -229,90 +244,120 @@ button {
 
 <template>
   <Head title="Welcome" />
+  <div
+    class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white"
+  >
+  <div class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right  bg-gray-500">
+      <Link
+        v-if="$page.props.auth.user"
+        :href="route('dashboard')"
+        class="font-semibold text-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
+        >Dashboard</Link
+      >
 
-  <div class="row p-12">
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center">
-        <input v-model="pageData.searchTerm" type="text" class="border rounded-l py-2 px-3 focus:outline-none focus:ring focus:border-blue-300" placeholder="Search..." />
-        <button @click="search" class="bg-blue-500 text-white py-2 px-4 rounded-r">Search</button>
-      </div>
-      <button @click="createNewFeedback" class="bg-green-500 text-white py-2 px-4 rounded">New Feedback</button>
+      <template v-else>
+        <Link
+          :href="route('login')"
+          class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
+          >Log in</Link
+        >
+
+        <Link
+          v-if="canRegister"
+          :href="route('register')"
+          class="ml-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
+          >Register</Link
+        >
+      </template>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <!-- Feedback Card 1 -->
+    <div class="row p-12 mt-10">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center">
+          <input v-model="pageData.searchTerm" type="text" class="border rounded-l py-2 px-3 focus:outline-none focus:ring focus:border-blue-300" placeholder="Search..." />
+          <button @click="search" class="bg-blue-500 text-white py-2 px-4 rounded-r">Search</button>
+        </div>
+        <button @click="createNewFeedback" class="bg-green-500 text-white py-2 px-4 rounded">New Feedback</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Feedback Card 1 -->
 
-      <div class="bg-white shadow p-4 rounded mb-4 hover:shadow-xl" v-for="feedback in pageData.items">
-        <div class="flex justify-between">
-          <div class="">
-            <div class="mb-2">
-              <h2 class="text-xl font-bold text-gray-800">{{ feedback.title }}</h2>
-              <p class="text-sm text-gray-600">{{ feedback.description }}</p>
+        <div class="bg-white shadow p-4 rounded mb-4 hover:shadow-xl" v-for="feedback in pageData.items">
+          <div class="flex justify-between content-between">
+            <div class="flex flex-col justify-between">
+              <div class="mb-2">
+                <h2 class="text-xl font-bold text-gray-800">{{ feedback.title }}</h2>
+                <p class="text-sm text-gray-600">{{ feedback.description }}</p>
+              </div>
+              <div class="row">
+              <div class="flex items-center justify-self-stretch">
+                <p class="text-sm font-semibold">{{ feedback.category }}</p>
+                <p class="text-xs text-gray-400">{{ feedback.updated_at }}</p>
+              </div>
+              <div class="flex items-center justify-start mt-2">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="editFeedback(feedback)">Edit</button>
+                <button class="bg-red-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="deleteFeedback(feedback)">Delete</button>
+                <Link class="bg-green-500 text-white px-4 py-2 rounded-b mr-2" :href="`/feedback/${feedback.id}`"> Open</Link>
+              </div>
+              </div>
             </div>
-            <div class="flex items-center justify-self-stretch">
-              <p class="text-sm font-semibold">{{ feedback.category }}</p>
-              <p class="text-xs text-gray-400">{{ feedback.updated_at }}</p>
-            </div>
-            <div class="flex items-center justify-start">
-              <button class="bg-blue-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="editFeedback(feedback)">Edit</button>
-              <button class="bg-red-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="deleteFeedback(feedback)">Delete</button>
-              <Link class="bg-green-500 text-white px-4 py-2 rounded-b mr-2" :href="`/feedback/${feedback.id}`"> Open {{ feedback.id }}</Link>
+            <div class="w-1/6">
+              <div class="flex flex-col items-end gap-3 pr-3 py-3">
+                <button  @click="vote('upvote', feedback)">
+                  <svg class="w-6 h-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                  </svg>
+                </button>
+                <span class="p-1">{{ feedback.upvotes }}</span>
+                <span class="p-1">{{ feedback.downvotes }}</span>
+                <button  @click="vote('downvote', feedback)">
+                  <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-          <div class="w-1/6">
-            <div class="flex flex-col items-end gap-3 pr-3 py-3">
-              <button>
-                <svg class="w-6 h-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                </svg>
-              </button>
-              <span class="p-1">18</span>
-              <button>
-                <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
-    </div>
-  </div>
-  <!-- Loading Row -->
-  <div class="flex justify-center items-center mt-8 mb-8">
-    <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
-    <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
-    <div class="loader" v-else></div>
-  </div>
-  <Modal :show="pageData.modal.show">
-    <div class="row">
-      <div class="flex justify-between items-center mb-4 mt-2 mr-2">
-        <h1 class="pl-2" v-if="pageData.modal.feedback.id">Update Feedback</h1>
-        <h1 class="pl-2" v-else>Create Feedback</h1>
-        <span @click="pageData.modal.show = false" class="cursor-pointer"> X </span>
+      <!-- Loading Row -->
+      <div class="flex justify-center items-center mt-8 mb-8">
+        <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
+        <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
+        <div class="loader" v-else></div>
       </div>
     </div>
-    <div class="row p-4">
-      <form @submit.prevent="handleSubmit">
-        <div class="mb-4">
-          <label for="title" class="block text-gray-700 font-bold mb-2">Title:</label>
-          <input v-model="pageData.modal.feedback.title" type="text" id="title" name="title" class="border rounded w-full py-2 px-3" required />
-        </div>
-        <div class="mb-4">
-          <label for="description" class="block text-gray-700 font-bold mb-2">Description:</label>
-          <textarea v-model="pageData.modal.feedback.description" id="description" name="description" class="border rounded w-full py-2 px-3" required></textarea>
-        </div>
-        <div class="mb-4">
-          <label for="status" class="block text-gray-700 font-bold mb-2">Status:</label>
-          <input type="text" v-model="pageData.modal.feedback.category" id="status" name="status" class="border rounded w-full py-2 px-3" required />
-        </div>
 
-        <div class="flex justify-center items-center mt-8 mb-8" v-if="pageData.loading">
-          <div class="loader"></div>
+    <Modal :show="pageData.modal.show">
+      <div class="row">
+        <div class="flex justify-between items-center mb-4 mt-2 mr-2">
+          <h1 class="pl-2" v-if="pageData.modal.feedback.id">Update Feedback</h1>
+          <h1 class="pl-2" v-else>Create Feedback</h1>
+          <span @click="pageData.modal.show = false" class="cursor-pointer"> X </span>
         </div>
-        <div class="flex justify-end" v-else>
-          <button @click="handleSubmit" class="bg-blue-500 text-white px-4 py-2 rounded-full">Save</button>
-        </div>
-      </form>
-    </div>
-  </Modal>
+      </div>
+      <div class="row p-4">
+        <form @submit.prevent="handleSubmit">
+          <div class="mb-4">
+            <label for="title" class="block text-gray-700 font-bold mb-2">Title:</label>
+            <input v-model="pageData.modal.feedback.title" type="text" id="title" name="title" class="border rounded w-full py-2 px-3" required />
+          </div>
+          <div class="mb-4">
+            <label for="description" class="block text-gray-700 font-bold mb-2">Description:</label>
+            <textarea v-model="pageData.modal.feedback.description" id="description" name="description" class="border rounded w-full py-2 px-3" required></textarea>
+          </div>
+          <div class="mb-4">
+            <label for="status" class="block text-gray-700 font-bold mb-2">Status:</label>
+            <input type="text" v-model="pageData.modal.feedback.category" id="status" name="status" class="border rounded w-full py-2 px-3" required />
+          </div>
+
+          <div class="flex justify-center items-center mt-8 mb-8" v-if="pageData.loading">
+            <div class="loader"></div>
+          </div>
+          <div class="flex justify-end" v-else>
+            <button @click="handleSubmit" class="bg-blue-500 text-white px-4 py-2 rounded-full">Save</button>
+          </div>
+        </form>
+      </div>
+    </Modal>
+  </div>
 </template>
