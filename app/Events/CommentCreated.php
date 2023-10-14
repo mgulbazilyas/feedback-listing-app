@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use App\Models\Feedback;
+use App\Models\Comment;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -11,20 +11,18 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class VoteEvent implements ShouldBroadcast
+class CommentCreated
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-    public $feedback;
-    public $upvotes;
-    public $downvotes;
+    protected $comment;
+    protected $created;
     /**
      * Create a new event instance.
      */
-    public function __construct(Feedback $feedback, int $upvoteCount, $downvoteCount)
+    public function __construct(Comment $comment, $created=true)
     {
-        $this->feedback = $feedback;
-        $this->upvotes = $upvoteCount;
-        $this->downvotes = $downvoteCount;
+        $this->comment = $comment;
+        $this->created = $created;
     }
 
     /**
@@ -40,6 +38,6 @@ class VoteEvent implements ShouldBroadcast
     }
     public function broadcastAs(): string
     {
-        return 'voted';
+        return 'comment-create-or-update';
     }
 }

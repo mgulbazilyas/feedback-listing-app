@@ -1,10 +1,41 @@
-<script setup>
+<script setup lang="ts">
 import Modal from "@/Components/Modal.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link } from "@inertiajs/vue3";
 import { ref, onMounted, onBeforeUnmount, reactive } from "vue";
 import axios from "axios";
+import Pusher from "pusher-js";
 
+// Enable pusher logging - don't include this in production
+// Pusher.logToConsole = true;
+const pusher = new Pusher("10e78c949680c16fc219", {
+  cluster: "ap1",
+  encrypted: true,
+});
+var channel = pusher.subscribe("app");
+channel.bind("voted", function (data) {
+  // debugger;
+  let item = pageData.items.find((item) => item.id == data.feedback.id);
+  item.upvotes += data.upvotes;
+  item.downvotes += data.downvotes;
+
+});
+channel.bind("feedbackCreateOrUpdate", function (data) {
+  // debugger;
+  console.log(data);
+  if (data.created){
+    if(pageData.searchTerm==""){
+      pageData.items.splice(0,0, data.feedback);
+    }
+  }else{
+    let item = pageData.items.find((item) => item.id == data.feedback.id);
+  item.title = data.title;
+  item.description += data.description;
+
+  }
+
+
+});
 const apiMeta = ref({});
 const loading = ref(false);
 const pageData = reactive({
@@ -144,6 +175,8 @@ const handleSubmit = () => {
       method: "put",
       url: `/api/feedback/${id}`,
       data: raw,
+      headers: { "Content-Type": "application/json"}
+
     };
     pageData.loading = true;
     axios(config)
@@ -166,6 +199,7 @@ const handleSubmit = () => {
       method: "post",
       url: `/api/feedback`,
       data: raw,
+      headers: { "Content-Type": "application/json"}
     };
     pageData.loading = true;
     axios(config)
@@ -189,18 +223,20 @@ const page = usePage();
 console.log(page.props);
 
 function vote(type='upvote', feedback){
+  pageData.loading = true;
   fetch(`/api/feedback/${feedback.id}/${type}`,{
     headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
   }).then(response=>response.json().then(res => {
     if(response.status == 200){
       feedback.upvotes = res.feedback.upvotes;
     feedback.downvotes = res.feedback.downvotes;
-
     }else{
       alert(res.message);
 
     }
-  })).catch(err => console.log(err));
+  })).catch(err => console.log(err)).finally(() => {
+    pageData.loading = false;
+  });
 }
 </script>
 
@@ -270,7 +306,7 @@ button {
         >
       </template>
     </div>
-    <div class="row p-12 mt-10">
+    <div class="row p-12 mt-10 w-full">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center">
           <input v-model="pageData.searchTerm" type="text" class="border rounded-l py-2 px-3 focus:outline-none focus:ring focus:border-blue-300" placeholder="Search..." />
@@ -302,14 +338,15 @@ button {
             </div>
             <div class="w-1/6">
               <div class="flex flex-col items-end gap-3 pr-3 py-3">
-                <button  @click="vote('upvote', feedback)">
+                
+                <button  @click="vote('upvote', feedback)" :disabled="pageData.loading">
                   <svg class="w-6 h-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
                   </svg>
                 </button>
                 <span class="p-1">{{ feedback.upvotes }}</span>
                 <span class="p-1">{{ feedback.downvotes }}</span>
-                <button  @click="vote('downvote', feedback)">
+                <button  @click="vote('downvote', feedback)" :disabled="pageData.loading">
                   <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                   </svg>

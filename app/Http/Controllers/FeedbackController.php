@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\FeedbackCreatedOrUpdated;
 use App\Models\Comment;
 use App\Models\Feedback;
 use Illuminate\Http\Request;
@@ -10,7 +11,7 @@ class FeedbackController extends Controller
 {
     public function index()
     {
-        $feedback = Feedback::paginate(10);
+        $feedback = Feedback::orderBy('updated_at', 'desc')->paginate(10);
         return response()->json(['data' => $feedback], 200);
     }
 
@@ -33,11 +34,14 @@ class FeedbackController extends Controller
             'title' => 'required|string',
             'description' => 'required|string',
             'category' => 'required|string',
-            'user_id' => 'required|exists:users,id',
+            // 'user_id' => 'required|exists:users,id',
         ]);
-
-        $feedback = Feedback::create($request->all());
-
+        
+        $feedbackData = $request->all();
+        $feedbackData['user_id'] = $request->user()->id;
+        
+        $feedback = Feedback::create($feedbackData);
+        event(new FeedbackCreatedOrUpdated($feedback, true));
         return response()->json(['message' => 'Feedback created successfully', 'data' => $feedback], 201);
     }
     public function update(Request $request, $id)
@@ -51,6 +55,7 @@ class FeedbackController extends Controller
         $feedback = Feedback::find($id);
 
         $feedback->update($request->all());
+        event(new FeedbackCreatedOrUpdated($feedback, false));
 
         return response()->json(['message' => 'Feedback Updated successfully', 'data' => $feedback], 201);
     }

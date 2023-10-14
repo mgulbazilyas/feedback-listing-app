@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommentCreated;
+use App\Events\CommentDeleted;
 use App\Models\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +21,7 @@ class CommentController extends Controller
         $comment->user_id = $request->user()->id;
         $comment->feedback_id = $request->input('feedback_id');
         $comment->save();
+        event(new CommentCreated($comment, true));
         return response()->json(['message' => 'Comment created successfully', 'data' => $comment], 201);
     }
     public function update(Request $request, $id)
@@ -32,6 +35,7 @@ class CommentController extends Controller
         $comment = Comment::find($id);
 
         $comment->update($request->all());
+        event(new CommentCreated($comment, false));
 
         return response()->json(['message' => 'Comment Updated successfully', 'data' => $comment], 201);
     }
@@ -46,6 +50,7 @@ class CommentController extends Controller
         }
 
         $comment->delete();
+        event(new CommentDeleted($comment));
 
         return response()->json(['message' => 'Comment deleted successfully'], 200);
     }

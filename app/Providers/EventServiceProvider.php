@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Events\FeedbackCreatedOrUpdated;
 use App\Events\VoteEvent;
+use App\Listeners\FeedbackCreated;
+use App\Listeners\FeedbackCreatedListener;
 use App\Listeners\HandleFeedbackVotes;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
@@ -23,6 +26,9 @@ class EventServiceProvider extends ServiceProvider
         VoteEvent::class => [
             HandleFeedbackVotes::class,
         ],
+        FeedbackCreatedOrUpdated::class => [
+            FeedbackCreatedListener::class
+        ]
     ];
 
     /**

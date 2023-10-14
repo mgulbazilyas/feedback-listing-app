@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('feedback', function (Blueprint $table) {
-            //
-            $table->integer('upvotes');
-            $table->integer('downvotes');
+        Schema::create('notification', function (Blueprint $table) {
+            $table->id();
+            $table->string('title');
+            $table->string('subtitle')->nullable();
+            $table->string('link');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -23,8 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('feedback', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('notification');
     }
 };

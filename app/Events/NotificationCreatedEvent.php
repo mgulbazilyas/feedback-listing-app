@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use App\Models\Feedback;
+use App\Models\Notification;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -11,20 +11,16 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class VoteEvent implements ShouldBroadcast
+class NotificationCreatedEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-    public $feedback;
-    public $upvotes;
-    public $downvotes;
+    public $notification;
     /**
      * Create a new event instance.
      */
-    public function __construct(Feedback $feedback, int $upvoteCount, $downvoteCount)
+    public function __construct(Notification $notification)
     {
-        $this->feedback = $feedback;
-        $this->upvotes = $upvoteCount;
-        $this->downvotes = $downvoteCount;
+        $this->notification = $notification;
     }
 
     /**
@@ -38,8 +34,9 @@ class VoteEvent implements ShouldBroadcast
             new Channel('app'),
         ];
     }
+
     public function broadcastAs(): string
     {
-        return 'voted';
+        return 'notification';
     }
 }

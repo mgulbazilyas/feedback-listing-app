@@ -5,6 +5,18 @@ import { Head, Link } from "@inertiajs/vue3";
 import { ref, onMounted, onBeforeUnmount, reactive, computed } from "vue";
 import axios from "axios";
 import { usePage } from "@inertiajs/vue3";
+import Pusher from "pusher-js";
+
+// Enable pusher logging - don't include this in production
+Pusher.logToConsole = true;
+const pusher = new Pusher("10e78c949680c16fc219", {
+  cluster: "ap1",
+  encrypted: true,
+});
+var channel = pusher.subscribe("app");
+channel.bind("voted", function (data) {
+  console.log(data);
+});
 const page = usePage();
 
 const user = computed(() => page.props.auth.user);
@@ -131,19 +143,21 @@ function addComment() {
       pageData.loading = false;
     });
 }
-function vote(type='upvote', feedback){
-  fetch(`/api/feedback/${feedback.id}/${type}`,{
-    headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
-  }).then(response=>response.json().then(res => {
-    if(response.status == 200){
-      feedback.upvotes = res.feedback.upvotes;
-    feedback.downvotes = res.feedback.downvotes;
-
-    }else{
-      alert(res.message);
-
-    }
-  })).catch(err => console.log(err));
+function vote(type = "upvote", feedback) {
+  fetch(`/api/feedback/${feedback.id}/${type}`, {
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+  })
+    .then((response) =>
+      response.json().then((res) => {
+        if (response.status == 200) {
+          feedback.upvotes = res.feedback.upvotes;
+          feedback.downvotes = res.feedback.downvotes;
+        } else {
+          alert(res.message);
+        }
+      })
+    )
+    .catch((err) => console.log(err));
 }
 </script>
 
@@ -190,8 +204,7 @@ button {
   <div
     class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white"
   >
-    
-    <div class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right  bg-gray-500">
+    <div class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right bg-gray-500">
       <Link
         v-if="$page.props.auth.user"
         :href="route('homepage')"

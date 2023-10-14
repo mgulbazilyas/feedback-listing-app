@@ -11,20 +11,20 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class VoteEvent implements ShouldBroadcast
+class FeedbackCreatedOrUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
+
     public $feedback;
-    public $upvotes;
-    public $downvotes;
+    public $created;
+
     /**
      * Create a new event instance.
      */
-    public function __construct(Feedback $feedback, int $upvoteCount, $downvoteCount)
+    public function __construct(Feedback $feedback, $created=false)
     {
         $this->feedback = $feedback;
-        $this->upvotes = $upvoteCount;
-        $this->downvotes = $downvoteCount;
+        $this->created = $created;
     }
 
     /**
@@ -40,6 +40,7 @@ class VoteEvent implements ShouldBroadcast
     }
     public function broadcastAs(): string
     {
-        return 'voted';
+        return 'feedbackCreateOrUpdate';
     }
+    
 }

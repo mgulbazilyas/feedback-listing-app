@@ -27,6 +27,7 @@
         "@fortawesome/free-solid-svg-icons": "^6.4.2",
         "@fortawesome/vue-fontawesome": "^3.0.3",
         "laravel-echo": "^1.15.3",
+        "pusher-js": "^8.3.0",
         "socket.io-client": "^4.7.2"
     }
 }
