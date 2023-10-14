@@ -25,9 +25,20 @@ Route::get('/', function () {
         // 'phpVersion' => PHP_VERSION,
     ]);
 })->name('homepage');
-Route::get('/feedback/{id}', function ($id){
-    $feedback = Feedback::find($id);
-        
+Route::get('/feedback/{id}', function (\Illuminate\Http\Request $request, $id){
+    $feedbacks = Feedback::query();
+    $user = $request->user();
+    if($user){
+        $feedbacks = $feedbacks->leftJoin('vote', function($join) use ($user) {
+            $join->on('feedback.id', '=', 'vote.feedback_id')
+                 ->where('vote.user_id', '=', $user->id);
+        });
+        $feedbacks = $feedbacks->select("feedback.*", "vote.type as vote_type");
+    }else{
+        $feedbacks = $feedbacks->select("feedback.*");
+    }
+
+    $feedback = $feedbacks->where('feedback.id', '=', $id)->first();
     return Inertia::render('FeedbackSingle', [
         'feedback_id' => $id,
         'feedback' => $feedback,

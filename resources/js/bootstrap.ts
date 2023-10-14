@@ -6,9 +6,39 @@
 
 import axios from 'axios';
 window.axios = axios;
-
+import Swal from 'sweetalert2'
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
+
+import Pusher from "pusher-js";
+import { Notification } from './types/model_type';
+
+// Enable pusher logging - don't include this in production
+// Pusher.logToConsole = true;
+const pusher = new Pusher("10e78c949680c16fc219", {
+  cluster: "ap1",
+  //   encrypted: true,
+});
+window.pusher = pusher;
+window.appChannel = pusher.subscribe('app');
+const toast = Swal.mixin({
+  toast: true, position: 'bottom-end', timer: 3000,
+  timerProgressBar: true, confirmButtonText: 'Open'
+});
+
+window.appChannel.bind('notification', (data: { notification: Notification; }) => {
+  const notification = data.notification;
+  toast.fire(
+    {
+      title: notification.title,
+      
+    }, 
+  ).then((value) => {
+    if(value.isConfirmed && notification.link != ''){
+      window.location.href = notification.link;
+    }
+  })
+})
 /**
  * Echo exposes an expressive API for subscribing to channels and listening
  * for events that are broadcast by Laravel. Echo and event broadcasting
@@ -30,3 +60,5 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 //     forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
 //     enabledTransports: ['ws', 'wss'],
 // });
+
+

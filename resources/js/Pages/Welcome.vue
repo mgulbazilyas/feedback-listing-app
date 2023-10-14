@@ -4,37 +4,25 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link } from "@inertiajs/vue3";
 import { ref, onMounted, onBeforeUnmount, reactive } from "vue";
 import axios from "axios";
-import Pusher from "pusher-js";
 
-// Enable pusher logging - don't include this in production
-// Pusher.logToConsole = true;
-const pusher = new Pusher("10e78c949680c16fc219", {
-  cluster: "ap1",
-  encrypted: true,
-});
-var channel = pusher.subscribe("app");
-channel.bind("voted", function (data) {
+window.appChannel.bind("voted", function (data) {
   // debugger;
   let item = pageData.items.find((item) => item.id == data.feedback.id);
   item.upvotes += data.upvotes;
   item.downvotes += data.downvotes;
-
 });
-channel.bind("feedbackCreateOrUpdate", function (data) {
+window.appChannel.bind("feedbackCreateOrUpdate", function (data) {
   // debugger;
   console.log(data);
-  if (data.created){
-    if(pageData.searchTerm==""){
-      pageData.items.splice(0,0, data.feedback);
+  if (data.created) {
+    if (pageData.searchTerm == "") {
+      pageData.items.splice(0, 0, data.feedback);
     }
-  }else{
+  } else {
     let item = pageData.items.find((item) => item.id == data.feedback.id);
-  item.title = data.title;
-  item.description += data.description;
-
+    item.title = data.title;
+    item.description += data.description;
   }
-
-
 });
 const apiMeta = ref({});
 const loading = ref(false);
@@ -175,8 +163,7 @@ const handleSubmit = () => {
       method: "put",
       url: `/api/feedback/${id}`,
       data: raw,
-      headers: { "Content-Type": "application/json"}
-
+      headers: { "Content-Type": "application/json" },
     };
     pageData.loading = true;
     axios(config)
@@ -199,7 +186,7 @@ const handleSubmit = () => {
       method: "post",
       url: `/api/feedback`,
       data: raw,
-      headers: { "Content-Type": "application/json"}
+      headers: { "Content-Type": "application/json" },
     };
     pageData.loading = true;
     axios(config)
@@ -222,21 +209,26 @@ import { usePage } from "@inertiajs/vue3";
 const page = usePage();
 console.log(page.props);
 
-function vote(type='upvote', feedback){
+function vote(type = "upvote", feedback) {
   pageData.loading = true;
-  fetch(`/api/feedback/${feedback.id}/${type}`,{
-    headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
-  }).then(response=>response.json().then(res => {
-    if(response.status == 200){
-      feedback.upvotes = res.feedback.upvotes;
-    feedback.downvotes = res.feedback.downvotes;
-    }else{
-      alert(res.message);
-
-    }
-  })).catch(err => console.log(err)).finally(() => {
-    pageData.loading = false;
-  });
+  fetch(`/api/feedback/${feedback.id}/${type}`, {
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+  })
+    .then((response) =>
+      response.json().then((res) => {
+        if (response.status == 200) {
+          feedback.upvotes = res.feedback.upvotes;
+          feedback.downvotes = res.feedback.downvotes;
+          feedback.vote_type = +(type == "upvote");
+        } else {
+          alert(res.message);
+        }
+      })
+    )
+    .catch((err) => console.log(err))
+    .finally(() => {
+      pageData.loading = false;
+    });
 }
 </script>
 
@@ -283,7 +275,8 @@ button {
   <div
     class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white"
   >
-  <div class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right  bg-gray-500">
+
+    <div v-show="true" class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right bg-gray-500">
       <Link
         v-if="$page.props.auth.user"
         :href="route('dashboard')"
@@ -325,29 +318,44 @@ button {
                 <p class="text-sm text-gray-600">{{ feedback.description }}</p>
               </div>
               <div class="row">
-              <div class="flex items-center justify-self-stretch">
-                <p class="text-sm font-semibold">{{ feedback.category }}</p>
-                <p class="text-xs text-gray-400">{{ feedback.updated_at }}</p>
-              </div>
-              <div class="flex items-center justify-start mt-2">
-                <button class="bg-blue-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="editFeedback(feedback)">Edit</button>
-                <button class="bg-red-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="deleteFeedback(feedback)">Delete</button>
-                <Link class="bg-green-500 text-white px-4 py-2 rounded-b mr-2" :href="`/feedback/${feedback.id}`"> Open</Link>
-              </div>
+                <div class="flex items-center justify-self-stretch">
+                  <p class="text-sm font-semibold">{{ feedback.category }}</p>
+                  <p class="text-xs text-gray-400">{{ feedback.updated_at }}</p>
+                </div>
+                <div class="flex items-center justify-start mt-2">
+                  <button class="bg-blue-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="editFeedback(feedback)">Edit</button>
+                  <button class="bg-red-500 text-white px-4 py-2 rounded-b mr-2" :disabled="pageData.loading" @click="deleteFeedback(feedback)">Delete</button>
+                  <Link class="bg-green-500 text-white px-4 py-2 rounded-b mr-2" :href="`/feedback/${feedback.id}`"> Open</Link>
+                </div>
               </div>
             </div>
             <div class="w-1/6">
               <div class="flex flex-col items-end gap-3 pr-3 py-3">
-                
-                <button  @click="vote('upvote', feedback)" :disabled="pageData.loading">
-                  <svg class="w-6 h-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                <button @click="vote('upvote', feedback)" :disabled="pageData.loading">
+                  <svg
+                    :class="{ 'text-green-600': !(feedback.vote_type == 1), 'text-gray-400': feedback.vote_type == 1 }"
+                    class="w-6 h-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="5"
+                    stroke="currentColor"
+                  >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
                   </svg>
                 </button>
                 <span class="p-1">{{ feedback.upvotes }}</span>
                 <span class="p-1">{{ feedback.downvotes }}</span>
-                <button  @click="vote('downvote', feedback)" :disabled="pageData.loading">
-                  <svg class="w-6 h-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                <button @click="vote('downvote', feedback)" :disabled="pageData.loading">
+                  <svg
+                    :class="{ 'text-red-600': !(feedback.vote_type == 0), 'text-gray-400': feedback.vote_type == 0 }"
+                    class="w-6 h-6"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="5"
+                    stroke="currentColor"
+                  >
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                   </svg>
                 </button>

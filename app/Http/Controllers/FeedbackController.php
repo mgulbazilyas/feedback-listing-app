@@ -9,10 +9,23 @@ use Illuminate\Http\Request;
 
 class FeedbackController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $feedback = Feedback::orderBy('updated_at', 'desc')->paginate(10);
-        return response()->json(['data' => $feedback], 200);
+
+        $feedbacks = Feedback::orderBy('updated_at', 'desc');
+        $user = $request->user();
+        if($user){
+            $feedbacks = $feedbacks->leftJoin('vote', function($join) use ($user) {
+                $join->on('feedback.id', '=', 'vote.feedback_id')
+                     ->where('vote.user_id', '=', $user->id);
+            });
+            $feedbacks = $feedbacks->select("feedback.*", "vote.type as vote_type");
+        }else{
+            $feedbacks = $feedbacks->select("feedback.*");
+        }
+        
+        $feedbacks = $feedbacks->paginate(10);
+        return response()->json(['data' => $feedbacks], 200);
     }
 
     public function viewComments($id) {

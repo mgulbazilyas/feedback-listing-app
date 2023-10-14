@@ -24,6 +24,7 @@ class HandleFeedbackVotes
         $feedback = $event->feedback;
         $feedback->upvotes = $feedback->upvotes + $event->upvotes;
         $feedback->downvotes = $feedback->downvotes + $event->downvotes;
+        $feedback->timestamps = false;
         $feedback->save();
         //
     }

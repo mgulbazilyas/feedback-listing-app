@@ -5,16 +5,8 @@ import { Head, Link } from "@inertiajs/vue3";
 import { ref, onMounted, onBeforeUnmount, reactive, computed } from "vue";
 import axios from "axios";
 import { usePage } from "@inertiajs/vue3";
-import Pusher from "pusher-js";
 
-// Enable pusher logging - don't include this in production
-Pusher.logToConsole = true;
-const pusher = new Pusher("10e78c949680c16fc219", {
-  cluster: "ap1",
-  encrypted: true,
-});
-var channel = pusher.subscribe("app");
-channel.bind("voted", function (data) {
+window.appChannel.bind("voted", function (data) {
   console.log(data);
 });
 const page = usePage();
@@ -152,6 +144,7 @@ function vote(type = "upvote", feedback) {
         if (response.status == 200) {
           feedback.upvotes = res.feedback.upvotes;
           feedback.downvotes = res.feedback.downvotes;
+          feedback.vote_type = +(type=='upvote');
         } else {
           alert(res.message);
         }
@@ -227,7 +220,7 @@ button {
         >
       </template>
     </div>
-
+    <!-- <pre>{{ feedback }}</pre> -->
     <div class="row p-12 w-full mt-10">
       <div class="bg-white shadow p-4 rounded mb-4">
         <div class="flex justify-between">
@@ -248,16 +241,18 @@ button {
           </div>
           <div class="w-1/6">
             <div class="flex flex-col items-end gap-3 pr-3 py-3">
-              <button @click="vote('upvote', $page.props.feedback)">
-                <svg class="w-12 h-12 mb-1 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                </svg>
-              </button>
-              <button @click="vote('downvote', $page.props.feedback)">
-                <svg class="w-12 h-12 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-              </button>
+              <button  @click="vote('upvote', feedback)" :disabled="pageData.loading">
+                  <svg :class="{'text-green-600': !(feedback.vote_type==1), 'text-gray-400': (feedback.vote_type==1)}" class="w-6 h-6 " xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                  </svg>
+                </button>
+                <span class="p-1">{{ feedback.upvotes }}</span>
+                <span class="p-1">{{ feedback.downvotes }}</span>
+                <button  @click="vote('downvote', feedback)" :disabled="pageData.loading">
+                  <svg :class="{'text-red-600': !(feedback.vote_type==0), 'text-gray-400': (feedback.vote_type==0)}" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
             </div>
           </div>
         </div>
