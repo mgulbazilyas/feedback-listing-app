@@ -11,18 +11,20 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class CommentCreated
+class CommentCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-    protected $comment;
-    protected $created;
+    public $comment;
+    public $created;
+    public $creator;
     /**
      * Create a new event instance.
      */
-    public function __construct(Comment $comment, $created=true)
+    public function __construct(Comment $comment, string $creator, $created=true)
     {
         $this->comment = $comment;
         $this->created = $created;
+        $this->creator = $creator;
     }
 
     /**

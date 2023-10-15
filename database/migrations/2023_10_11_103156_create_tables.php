@@ -32,6 +32,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamps();
+            $table->unique(['user_id', 'feedback_id']);
         });
 
         Schema::create('comment', function (Blueprint $table) {

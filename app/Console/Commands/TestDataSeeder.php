@@ -17,7 +17,15 @@ class TestDataSeeder extends Command
     public function handle()
     {
         $faker = Faker::create();
-
+        // Admin
+        $user = User::create([
+            'name' => $faker->name,
+            'email' => 'admin@feedback.com',
+            'password' => bcrypt('test@123'), // Set a default password
+            // 'role' => 'admin',
+        ]);
+        $user->role = 'admin';
+        $user->save();
         // Create Users
         for ($i = 0; $i < 10; $i++) {
             User::create([
@@ -43,12 +51,16 @@ class TestDataSeeder extends Command
                         'feedback_id' => $feedback->id,
                         'user_id' => User::inRandomOrder()->first()->id,
                     ]);
+                    try{
+                        Vote::create([
+                            'type' => $faker->randomElement([true, false]),
+                            'feedback_id' => $feedback->id,
+                            'user_id' => User::inRandomOrder()->first()->id,
+                        ]);
+    
+                    }catch(\Exception $e){
 
-                    Vote::create([
-                        'type' => $faker->randomElement([true, false]),
-                        'feedback_id' => $feedback->id,
-                        'user_id' => User::inRandomOrder()->first()->id,
-                    ]);
+                    }
                 }
             }
         });

@@ -24,7 +24,7 @@ class FeedbackCreatedListener
     {
         //
         $notificationData = [
-            'title' => 'Feedback Created',
+            'title' => 'New Feedback Added',
             'subtitle' => 'A new feedback has been created!',
             'link' => '/feedback/' . $event->feedback->id, // Adjust the link as needed
         ];

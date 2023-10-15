@@ -21,7 +21,7 @@ class CommentController extends Controller
         $comment->user_id = $request->user()->id;
         $comment->feedback_id = $request->input('feedback_id');
         $comment->save();
-        event(new CommentCreated($comment, true));
+        event(new CommentCreated($comment,$request->user()->email, true));
         return response()->json(['message' => 'Comment created successfully', 'data' => $comment], 201);
     }
     public function update(Request $request, $id)

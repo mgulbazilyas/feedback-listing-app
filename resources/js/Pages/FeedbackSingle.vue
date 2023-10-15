@@ -10,6 +10,18 @@ import Swal from "sweetalert2";
 window.appChannel.bind("voted", function (data) {
   console.log(data);
 });
+window.appChannel.bind("comment-create-or-update", function (data) {
+  console.log(data);
+  if(data.created){
+    let comment = data.comment;
+    comment.username = data.creator;
+    pageData.items.splice(0,0, comment);
+  }else{
+    // TODO: if updated update the comment but this is not used
+  }
+});
+
+
 const page = usePage();
 const editorConfig = {
   toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "blockQuote"],
@@ -136,10 +148,10 @@ function addComment() {
     .request(config)
     .then(function (json) {
       console.log(json);
-      pageData.items.splice(0, 0, {
-        comment: pageData.feedback.comment,
-        username: "You",
-      });
+      // pageData.items.splice(0, 0, {
+      //   comment: pageData.feedback.comment,
+      //   username: "You",
+      // });
       pageData.feedback.comment = "";
     })
     .finally(() => {

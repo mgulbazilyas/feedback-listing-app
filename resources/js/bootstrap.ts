@@ -15,8 +15,8 @@ import { Notification } from './types/model_type';
 
 // Enable pusher logging - don't include this in production
 // Pusher.logToConsole = true;
-const pusher = new Pusher("10e78c949680c16fc219", {
-  cluster: "ap1",
+const pusher = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY, {
+  cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
   //   encrypted: true,
 });
 window.pusher = pusher;
@@ -31,6 +31,7 @@ window.appChannel.bind('notification', (data: { notification: Notification; }) =
   toast.fire(
     {
       title: notification.title,
+      text: notification.subtitle,
       
     }, 
   ).then((value) => {
