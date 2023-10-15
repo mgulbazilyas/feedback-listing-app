@@ -18,9 +18,11 @@ use Inertia\Inertia;
 */
 
 Route::get('/', function () {
+    $categories = Feedback::select('category')->distinct()->get();
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
+        'categories' => $categories,
         // 'laravelVersion' => Application::VERSION,
         // 'phpVersion' => PHP_VERSION,
     ]);
@@ -45,9 +47,14 @@ Route::get('/feedback/{id}', function (\Illuminate\Http\Request $request, $id){
     
     ]);
 })->name('feeback-detail');
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::group(['middleware' => 'auth.admin'], function () {
+    Route::get('/users', function () {
+        return Inertia::render('Users');
+    })->name('users');
+    
+    // Routes that require admin privileges
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

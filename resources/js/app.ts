@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { library, config } from '@fortawesome/fontawesome-svg-core'
 import 'sweetalert2/dist/sweetalert2.min.css'
-
+import CKEditor from '@ckeditor/ckeditor5-vue';
 /* add icons to the library */
 // library.add(faUserSecret)
 library.add(fas)
@@ -33,8 +33,9 @@ createInertiaApp({
             }
         };
         app.use(plugin)
-            .use(ZiggyVue, Ziggy).
-            component('font-awesome', FontAwesomeIcon)
+            .use(ZiggyVue, Ziggy)
+            .use(CKEditor)
+            .component('font-awesome', FontAwesomeIcon)
             .mount(el);
     },
     progress: {

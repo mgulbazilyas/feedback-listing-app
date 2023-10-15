@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('downvotes')->default(0);
 
             $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamps();
         });
 
@@ -28,9 +28,9 @@ return new class extends Migration
             $table->id();
             $table->boolean('type');
             $table->unsignedBigInteger('feedback_id');
-            $table->foreign('feedback_id')->references('id')->on('feedback');
+            $table->foreign('feedback_id')->references('id')->on('feedback')->cascadeOnDelete();
             $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamps();
         });
 
@@ -38,9 +38,9 @@ return new class extends Migration
             $table->id();
             $table->text('comment');
             $table->unsignedBigInteger('feedback_id');
-            $table->foreign('feedback_id')->references('id')->on('feedback');
+            $table->foreign('feedback_id')->references('id')->on('feedback')->cascadeOnDelete();
             $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamps();
         });
 

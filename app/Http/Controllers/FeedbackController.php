@@ -14,17 +14,39 @@ class FeedbackController extends Controller
 
         $feedbacks = Feedback::orderBy('updated_at', 'desc');
         $user = $request->user();
+        $showOnlyOwner = $request->input('showOnlyOwner');
+        $searchTerm = $request->input('searchTerm');
+        $category = $request->input('category');
+        $feedbacks = $feedbacks->leftJoin('users', function($join){
+            $join->on('feedback.user_id', '=', 'users.id');
+        });
+
         if($user){
+            if($showOnlyOwner=='true'){
+                $feedbacks = $feedbacks->where('feedback.user_id', $user->id);
+            }
             $feedbacks = $feedbacks->leftJoin('vote', function($join) use ($user) {
                 $join->on('feedback.id', '=', 'vote.feedback_id')
                      ->where('vote.user_id', '=', $user->id);
             });
-            $feedbacks = $feedbacks->select("feedback.*", "vote.type as vote_type");
+            $feedbacks = $feedbacks->select("feedback.*", "vote.type as vote_type", "users.name as creator_name");
         }else{
-            $feedbacks = $feedbacks->select("feedback.*");
+            $feedbacks = $feedbacks->select("feedback.*", "users.name as creator_name");
         }
-        
-        $feedbacks = $feedbacks->paginate(10);
+        if($searchTerm){
+            $feedbacks = $feedbacks->where(function ($query) use ($searchTerm) {
+                $query->whereRaw('LOWER(title) LIKE ?', ['%' . strtolower($searchTerm) . '%'])
+                      ->orWhereRaw('LOWER(description) LIKE ?', ['%' . strtolower($searchTerm) . '%']);
+            });
+        }
+        if($category){
+            $feedbacks = $feedbacks->where('feedback.category', $category);
+        }
+            
+
+
+
+        $feedbacks = $feedbacks->paginate(12);
         return response()->json(['data' => $feedbacks], 200);
     }
 

@@ -1,16 +1,26 @@
 <script setup lang="ts">
 import Modal from "@/Components/Modal.vue";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import Layout from "@/Layouts/Layout.vue";
 import { Head, Link } from "@inertiajs/vue3";
 import { ref, onMounted, onBeforeUnmount, reactive, computed } from "vue";
 import axios from "axios";
 import { usePage } from "@inertiajs/vue3";
-
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import Swal from "sweetalert2";
 window.appChannel.bind("voted", function (data) {
   console.log(data);
 });
 const page = usePage();
-
+const editorConfig = {
+  toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "blockQuote"],
+  heading: {
+    options: [
+      { model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph" },
+      { model: "heading1", view: "h1", title: "Heading 1", class: "ck-heading_heading1" },
+      { model: "heading2", view: "h2", title: "Heading 2", class: "ck-heading_heading2" },
+    ],
+  },
+};
 const user = computed(() => page.props.auth.user);
 const feedback = computed(() => page.props.feedback);
 const feedbackId = computed(() => page.props.feedback_id);
@@ -111,7 +121,8 @@ const getStatusColorClass = (status) => {
 };
 
 function addComment() {
-  let config = {
+  if(user.value){
+    let config = {
     method: "post",
     maxBodyLength: Infinity,
     url: "http://127.0.0.1:8000/api/comments",
@@ -134,6 +145,10 @@ function addComment() {
     .finally(() => {
       pageData.loading = false;
     });
+
+  }else{
+    Swal.fire("Please Register to comment");
+  }
 }
 function vote(type = "upvote", feedback) {
   fetch(`/api/feedback/${feedback.id}/${type}`, {
@@ -144,7 +159,7 @@ function vote(type = "upvote", feedback) {
         if (response.status == 200) {
           feedback.upvotes = res.feedback.upvotes;
           feedback.downvotes = res.feedback.downvotes;
-          feedback.vote_type = +(type=='upvote');
+          feedback.vote_type = +(type == "upvote");
         } else {
           alert(res.message);
         }
@@ -154,7 +169,7 @@ function vote(type = "upvote", feedback) {
 }
 </script>
 
-<style scoped>
+<style >
 input {
   border: 1px solid #ccc;
   border-radius: 0;
@@ -190,38 +205,17 @@ button {
   height: 36px;
   animation: spin 1s linear infinite;
 }
+.ck-editor[role="application"] {
+  width: 100%!important;
+}
 </style>
 
 <template>
-  <Head title="Welcome" />
-  <div
-    class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white"
-  >
-    <div class="w-full sm:fixed sm:top-0 sm:right-0 p-6 text-right bg-gray-500">
-      <Link
-        v-if="$page.props.auth.user"
-        :href="route('homepage')"
-        class="font-semibold text-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-        >Home</Link
-      >
-
-      <template v-else>
-        <Link
-          :href="route('login')"
-          class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-          >Log in</Link
-        >
-
-        <Link
-          v-if="canRegister"
-          :href="route('register')"
-          class="ml-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500"
-          >Register</Link
-        >
-      </template>
-    </div>
-    <!-- <pre>{{ feedback }}</pre> -->
-    <div class="row p-12 w-full mt-10">
+  <Layout>
+    <template #header>
+      <h2>Feedback #{{ feedbackId }}</h2>
+    </template>
+    <div class="row p-8 w-full">
       <div class="bg-white shadow p-4 rounded mb-4">
         <div class="flex justify-between">
           <div>
@@ -239,20 +233,36 @@ button {
               </div>
             </div>
           </div>
-          <div class="w-1/6">
+          <div class="w-1/6" v-if="$page.props.auth.user">
             <div class="flex flex-col items-end gap-3 pr-3 py-3">
-              <button  @click="vote('upvote', feedback)" :disabled="pageData.loading">
-                  <svg :class="{'text-green-600': !(feedback.vote_type==1), 'text-gray-400': (feedback.vote_type==1)}" class="w-6 h-6 " xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                  </svg>
-                </button>
-                <span class="p-1">{{ feedback.upvotes }}</span>
-                <span class="p-1">{{ feedback.downvotes }}</span>
-                <button  @click="vote('downvote', feedback)" :disabled="pageData.loading">
-                  <svg :class="{'text-red-600': !(feedback.vote_type==0), 'text-gray-400': (feedback.vote_type==0)}" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
+              <button @click="vote('upvote', feedback)" :disabled="pageData.loading || feedback.vote_type == 1">
+                <svg
+                  :class="{ 'text-green-600': !(feedback.vote_type == 1), 'text-gray-400': feedback.vote_type == 1 }"
+                  class="w-6 h-6"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="5"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+              <span class="p-1">{{ feedback.upvotes }}</span>
+              <span class="p-1">{{ feedback.downvotes }}</span>
+              <button @click="vote('downvote', feedback)" :disabled="pageData.loading || feedback.vote_type == 0">
+                <svg
+                  :class="{ 'text-red-600': !(feedback.vote_type == 0), 'text-gray-400': feedback.vote_type == 0 }"
+                  class="w-6 h-6"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="5"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -262,14 +272,9 @@ button {
         <h2 class="text-xl font-bold text-gray-800 mb-2">Add Comment</h2>
 
         <div class="flex gap-3 items-end">
-          <textarea
-            @keydown.enter="addComment"
-            :disabled="pageData.loading"
-            v-model="pageData.feedback.comment"
-            name="comment"
-            class="w-full p-2 border rounded"
-            placeholder="Add a comment"
-          ></textarea>
+          <!--  -->
+          <ckeditor :editor="ClassicEditor" v-model="pageData.feedback.comment" :config="editorConfig" style="width: 100%"> </ckeditor>
+
           <div>
             <div class="loader" v-if="pageData.loading"></div>
             <button v-else @click="addComment" class="mb-2 mt-2 bg-blue-500 text-white px-4 py-2 border rounded-xl">Submit</button>
@@ -283,16 +288,16 @@ button {
           <!-- <img :src="comment.userProfilePicture" alt="Profile Picture" class="w-10 h-10 object-cover rounded-full mr-4" /> -->
           <div>
             <p class="text-gray-800 font-semibold">{{ comment.username }}</p>
-            <p class="text-sm text-gray-600">{{ comment.comment }}</p>
+            <div class="text-sm bg-white" v-html="comment.comment"></div>
           </div>
         </div>
-      </div>
-      <!-- Loading Row -->
-      <div class="flex justify-center items-center mt-8 mb-8">
-        <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
-        <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
-        <div class="loader" v-else></div>
+        <!-- Loading Row -->
+        <div class="flex justify-center items-center mt-8 mb-8">
+          <h2 v-if="apiMeta.current_page && !apiMeta.next_page_url">No More Items</h2>
+          <div class="infinite-scroll-trigger" ref="infiniteScrollTrigger" v-else-if="!loading"></div>
+          <div class="loader" v-else></div>
+        </div>
       </div>
     </div>
-  </div>
+  </Layout>
 </template>
